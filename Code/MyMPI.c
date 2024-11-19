@@ -29,8 +29,6 @@ int get_size (MPI_Datatype t) {
    printf ("Error: Unrecognized argument to 'get_size'\n");
    fflush (stdout);
    MPI_Abort (MPI_COMM_WORLD, TYPE_ERROR);
-
-   return -1;
 }
 
 
@@ -315,7 +313,7 @@ void read_col_striped_matrix (
 {
    void      *buffer;        /* File buffer */
    int        datum_size;    /* Size of matrix element */
-   int        i; //, j;
+   int        i, j;
    int        id;            /* Process rank */
    FILE      *infileptr;     /* Input file ptr */
    int        local_cols;    /* Cols on this process */
@@ -397,7 +395,7 @@ void read_row_striped_matrix (
    int          id;           /* Process rank */
    FILE        *infileptr;    /* Input file pointer */
    int          local_rows;   /* Rows on this proc */
-   // void       **lptr;         /* Pointer into 'subs' */
+   void       **lptr;         /* Pointer into 'subs' */
    int          p;            /* Number of processes */
    void        *storage;      /* Pointer for local storage */
    MPI_Status   status;       /* Result of receive */
@@ -453,10 +451,6 @@ void read_row_striped_matrix (
       }
       x = fread (storage, datum_size, local_rows * *n,
          infileptr);
-      if (x != local_rows * *n) {
-         fprintf(stderr, "Error: Unable to read the expected amount of data from the file.\n");
-         MPI_Abort(MPI_COMM_WORLD, 1); // Terminate the MPI program if the read fails
-      }
       fclose (infileptr);
    } else {
       MPI_Recv (storage, local_rows * *n, dtype, p-1,
@@ -524,10 +518,6 @@ void read_block_vector (
       }
       x = fread (*v, datum_size, BLOCK_SIZE(id,p,*n),
              infileptr);
-      if (x != local_els * *n) {
-         fprintf(stderr, "Error: Unable to read the expected amount of data from the file.\n");
-         MPI_Abort(MPI_COMM_WORLD, 1); // Terminate the MPI program if the read fails
-      }
       fclose (infileptr);
    } else {
       MPI_Recv (*v, BLOCK_SIZE(id,p,*n), dtype, p-1, DATA_MSG,
@@ -548,7 +538,7 @@ void read_replicated_vector (
    MPI_Comm     comm)   /* IN - Communicator */
 {
    int        datum_size; /* Bytes per vector element */
-   // int        i;
+   int        i;
    int        id;         /* Process rank */
    FILE      *infileptr;  /* Input file pointer */
    int        p;          /* Number of processes */
@@ -716,10 +706,10 @@ void print_col_striped_matrix (
    int          n,       /* IN - Matrix cols */
    MPI_Comm     comm)    /* IN - Communicator */
 {
-   // MPI_Status status;     /* Result of receive */
+   MPI_Status status;     /* Result of receive */
    int        datum_size; /* Bytes per matrix element */
    void      *buffer;     /* Enough room to hold 1 row */
-   int        i; //, j;
+   int        i, j;
    int        id;         /* Process rank */
    int        p;          /* Number of processes */
    int*       rec_count;  /* Elements received per proc */
@@ -1053,12 +1043,7 @@ void read_row_striped_matrix_halo(
          MPI_Send(storage + datum_size * *n * halo_top, BLOCK_SIZE(i, p, *m) * *n, dtype, i, DATA_MSG, comm);
       }
       x = fread(storage + datum_size * *n * halo_top, datum_size, (local_rows - halo_top - halo_bottom) * *n, infileptr);
-      if (x != local_rows * *n) {
-         fprintf(stderr, "Error: Unable to read the expected amount of data from the file.\n");
-         MPI_Abort(MPI_COMM_WORLD, 1); // Terminate the MPI program if the read fails
-      }
       fclose(infileptr);
-
    } else {
       MPI_Recv(storage + datum_size * *n * halo_top, (local_rows - halo_top - halo_bottom) * *n, dtype, p-1, DATA_MSG, comm, &status);
    }
