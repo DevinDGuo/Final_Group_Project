@@ -1,137 +1,77 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <mpi.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<mpi.h>
+#include "MyMPI.h"
 #include "utilities.h"
-#include "timer.h"
-
 #define dtype double
-
-void printUsage() {
-    printf("Usage: mpirun -np <num processes> ./program <num iter.> <infile> <outfile> <debug level> [<all-stacked-file-name.raw>]\n");
-}
-
-int main(int argc, char* argv[]) {
-    // Initialize MPI
+int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
-
-    int num_process, rank;
-    MPI_Comm_size(MPI_COMM_WORLD, &num_process);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    if (argc < 5 || argc > 6) {
-        if (rank == 0) printUsage();
+    if(argc!=4) {
+        printf("usage: mpirun -np <p> %s <in data file> <out data file> <out data file from halo array> \n", argv[0]);
         MPI_Finalize();
-        return 1;
+        exit(1);
     }
+    
+    //void read_row_striped_matrix (
+    //   char        *s,        /* IN - File name */
+    //   void      ***subs,     /* OUT - 2D submatrix indices */
+    //   MPI_Datatype dtype,    /* IN - Matrix element type */
+    //   int         *m,        /* OUT - Matrix rows */
+    //   int         *n,        /* OUT - Matrix cols */
+    //   MPI_Comm     comm)     /* IN - Communicator */
+    
+    dtype** A; int rows, cols;
+    
 
-    double overall_start, overall_end, work_start, work_end, other_total = 0.0;
+    read_row_striped_matrix(argv[1], (void***)&A, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
+    
+    //void print_row_striped_matrix (
+    //   void **a,            /* IN - 2D array */
+    //   MPI_Datatype dtype,  /* IN - Matrix element type */
+    //   int m,               /* IN - Matrix rows */
+    //   int n,               /* IN - Matrix cols */
+    //   MPI_Comm comm)       /* IN - Communicator */
+    
+    // just print out the matrix, showing the Quinn's version will work
+    print_row_striped_matrix((void**)A, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+    
+    //void write_row_striped_matrix (
+    //   char* outFile,       /* IN - output file name */
+    //   void **a,            /* IN - 2D array */
+    //   MPI_Datatype dtype,  /* IN - Matrix element type */
+    //   int m,               /* IN - Matrix rows */
+    //   int n,               /* IN - Matrix cols */
+    //   MPI_Comm comm)       /* IN - Communicator */
+    
+    // now, let's try to write out the matrix, using our new function, that is based on Quinn's print version.
+    write_row_striped_matrix(argv[2], (void**)A, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+    
+    // now, let's make a new matrix in memory that is the 'halo' version of the matrix
+    dtype** A2; int rows2, cols2;
+    
+    // read in the matrix.  the matrix we're reading is is the same format, but then it allocates the matrix,
+    // the matrix will have the extra rows (depending on which process it is), and it will read and place the matrix
+    // where it needs to be.  so the rows and cols are the same as before, but internally, it will need extra rows
+    // make this function using his read() as a starting place
+    read_row_striped_matrix_halo(argv[1], (void***)&A2, MPI_DOUBLE, &rows2, &cols2, MPI_COMM_WORLD);
+    
+    // print out the actual matrix in memory, which includes the halos, so that we can see that it is there.
+    print_row_striped_matrix_halo((void**)A2, MPI_DOUBLE, rows2, cols2, MPI_COMM_WORLD);
 
-    // Start overall timing
-    GET_TIME(overall_start);
+    // Perform the exchange
+    exchange_row_striped_values((void***)&A2, MPI_DOUBLE, rows2, cols2, MPI_COMM_WORLD);
 
-    int iterations = atoi(argv[1]);
-    char *inFile = argv[2];
-    char *outFile = argv[3];
-    int debug_level = atoi(argv[4]);
-    char *allIterationsFile = NULL;
-    if (argc == 6) {
-        allIterationsFile = argv[5]; // Optional argument for stacked file
-    }
+    print_row_striped_matrix_halo((void**)A2, MPI_DOUBLE, rows2, cols2, MPI_COMM_WORLD);
 
-    double **matrix = NULL, **matrix1 = NULL;
-    int rows, cols;
+    // then, given that A2 is a halo version of the matrix, write the data to the file
+    // but the data in the file, will not have the halo information, so that it will match the
+    // format that we need for the final state of the 2d heat plate.
+    write_row_striped_matrix_halo(argv[3], (void**)A2, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
 
-    // Debug: Input file info
-    if (debug_level == 1 && rank == 0) {
-        struct stat inFileStat;
-        if (stat(inFile, &inFileStat) == 0) {
-            printf("Reading from input file: %s (size: %ld bytes)\n", inFile, inFileStat.st_size);
-        } else {
-            perror("Error getting input file size");
-        }
-    }
+    my_free((void**)A);
+    my_free((void**)A2);
 
-    // Read matrix
-    read_row_striped_matrix_halo(inFile, (void***)&matrix, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
-    if (matrix == NULL) {
-        if (rank == 0) fprintf(stderr, "Error: Failed to read matrix from file.\n");
-        MPI_Finalize();
-        return 1;
-    }
-
-    // Validate number of threads
-    if (num_process > rows) {
-        if (rank == 0) {
-            fprintf(stderr, "Error: Number of processes (%d) cannot exceed the number of rows (%d).\n", num_process, rows);
-        }
-        free(matrix);
-        MPI_Finalize();
-        return 1;
-    }
-
-    malloc2D(&matrix1, rows, cols);
-
-    // Preserve boundaries
-    for (int i = 0; i < cols; i++) {
-        matrix1[0][i] = matrix[0][i];
-        matrix1[rows - 1][i] = matrix[rows - 1][i];
-    }
-
-    // Work timing
-    GET_TIME(work_start);
-
-    if (debug_level == 1 && rank == 0) printf("Starting Stencil.\n");
-
-    // stencil2DPThread(iterations, debug_level, rows, cols, matrix, matrix1, allIterationsFile, &other_total, num_process);
-
-    if (debug_level == 1 && rank == 0) printf("Stencil completed for %d iterations.\n", iterations);
-
-    GET_TIME(work_end);
-
-    // Write output matrix
-    write_row_striped_matrix_halo(outFile, (void**)matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-
-    // Free memory
-    for (int i = 0; i < rows; i++) {
-        free(matrix[i]);
-        free(matrix1[i]);
-    }
-    free(matrix);
-    free(matrix1);
-
-    // End overall timing
-    GET_TIME(overall_end);
-
-    // Calculate times
-    double overall_time = overall_end - overall_start;
-    double work_time = work_end - work_start - other_total;
-    double total_other_time = overall_time - work_time;
-
-    if (debug_level >= 0 && rank == 0) {
-        printf("Time Overall: %.5f seconds\n", overall_time);
-        printf("Time Computation: %.5f seconds\n", work_time);
-        printf("Time Other: %.5f seconds\n", total_other_time);
-    }
-
-    // Debug: Output file info
-    if (debug_level == 1 && rank == 0) {
-        struct stat outFileStat;
-        if (stat(outFile, &outFileStat) == 0) {
-            printf("Output file: %s (size: %ld bytes)\n", outFile, outFileStat.st_size);
-        } else {
-            perror("Error getting output file size");
-        }
-
-        if (allIterationsFile != NULL) {
-            struct stat allIterationsFileStat;
-            if (stat(allIterationsFile, &allIterationsFileStat) == 0) {
-                printf("All iterations file: %s (size: %ld bytes)\n", allIterationsFile, allIterationsFileStat.st_size);
-            }
-        }
-    }
-
-    // Finalize MPI
+    
     MPI_Finalize();
     return 0;
 }

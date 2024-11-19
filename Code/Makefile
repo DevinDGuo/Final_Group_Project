@@ -29,7 +29,7 @@ omp-stencil-2d: $(OBJS) omp-stencil-2d.o
 	$(CC) $(CFLAGS) -o omp-stencil-2d $(OBJS) omp-stencil-2d.o $(LFLAGS)
 
 mpi-stencil-2d: $(OBJS) mpi-stencil-2d.o
-	$(CC) $(CFLAGS) -o mpi-stencil-2d $(OBJS) mpi-stencil-2d.o $(LFLAGS)
+	$(CC) $(CFLAGS) -o mpi-stencil-2d $(OBJS) mpi-stencil-2d.o MyMPI.c $(LFLAGS)
 
 # Compile object files
 utilities.o: utilities.c utilities.h my_barrier.h
