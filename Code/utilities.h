@@ -2,11 +2,20 @@
 #define UTILITIES_H
 
 #include "my_barrier.h"
+#include <mpi.h>
 
 // Quinn Macros
 #define BLOCK_LOW(id,p,n)  ((id)*(n)/(p))
 #define BLOCK_HIGH(id,p,n) (BLOCK_LOW((id)+1,p,n)-1)
 #define BLOCK_SIZE(id,p,n) (BLOCK_HIGH(id,p,n)-BLOCK_LOW(id,p,n)+1)
+
+#define DATA_MSG           0
+#define PROMPT_MSG         1
+#define RESPONSE_MSG       2
+
+#define OPEN_FILE_ERROR    -1
+#define MALLOC_ERROR       -2
+#define TYPE_ERROR         -3
 
 typedef struct {
     int id;
@@ -21,6 +30,8 @@ typedef struct {
     double *other_total;
     my_barrier_t *barrier;
 } ThreadArgs;
+
+int get_size (MPI_Datatype t);
 
 void fill2D(double **matrix, int rows, int cols);
 
@@ -47,5 +58,20 @@ void stencil2DPThread(int numIterations, int debugLevel, int rows, int cols, dou
 	const char *outputFile, double *other_total, int num_threads);
 
 void stencil2DOMP(int numIterations, int debugLevel, int rows, int cols, double **matrix, double **matrix1, const char *outputFile, double *other_total);
+
+void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, void **storage);
+
+void *my_malloc (int id, int bytes);
+
+// Function to free dynamically allocated memory for a 2D array
+void my_free(void **matrix);
+
+void read_row_striped_matrix_halo (char *, void ***, MPI_Datatype, int *, int *, MPI_Comm);
+
+void print_row_striped_matrix_halo (void **, MPI_Datatype, int, int, MPI_Comm);
+
+void write_row_striped_matrix_halo (char*, void **, MPI_Datatype, int, int, MPI_Comm);
+
+void exchange_row_striped_values(void ***, MPI_Datatype, int, int, MPI_Comm);
 
 #endif /* UTILITIES_H */

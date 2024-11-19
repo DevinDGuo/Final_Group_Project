@@ -1,10 +1,10 @@
 # Compiler and flags
-CC = gcc
+CC = mpicc
 CFLAGS = -g -Wall -Wstrict-prototypes -std=gnu99 -fopenmp
 LFLAGS = -lm -lpthread
 
 # Program names
-PROGS = print-2d make-2d stencil-2d pth-stencil-2d omp-stencil-2d
+PROGS = print-2d make-2d stencil-2d pth-stencil-2d omp-stencil-2d mpi-stencil-2d
 
 # Object files
 OBJS = utilities.o my_barrier.o
@@ -28,6 +28,9 @@ pth-stencil-2d: $(OBJS) pth-stencil-2d.o
 omp-stencil-2d: $(OBJS) omp-stencil-2d.o
 	$(CC) $(CFLAGS) -o omp-stencil-2d $(OBJS) omp-stencil-2d.o $(LFLAGS)
 
+mpi-stencil-2d: $(OBJS) mpi-stencil-2d.o
+	$(CC) $(CFLAGS) -o mpi-stencil-2d $(OBJS) mpi-stencil-2d.o $(LFLAGS)
+
 # Compile object files
 utilities.o: utilities.c utilities.h my_barrier.h
 	$(CC) $(CFLAGS) -c utilities.c -o utilities.o
@@ -50,6 +53,8 @@ pth-stencil-2d.o: pth-stencil-2d.c utilities.h
 omp-stencil-2d.o: omp-stencil-2d.c utilities.h
 	$(CC) $(CFLAGS) -c omp-stencil-2d.c -o omp-stencil-2d.o
 
+mpi-stencil-2d.o: mpi-stencil-2d.c utilities.h
+	$(CC) $(CFLAGS) -c mpi-stencil-2d.c -o mpi-stencil-2d.o
 # Clean up
 clean:
 	rm -f *.o *.dat core* $(PROGS)
