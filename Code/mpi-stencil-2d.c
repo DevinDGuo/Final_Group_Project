@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
     int iterations = atoi(argv[1]);
     char *inFile = argv[2];
     char *outFile = argv[3];
+    double **matrix1;
     int debug_level = atoi(argv[4]);
     char *allIterationsFile = NULL;
 
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]) {
         allIterationsFile = argv[5]; // Optional argument for stacked file
     }
     
-    double** matrix, ** matrix1;
+    double** matrix;
     int rows, cols;
 
     if (rank == 0) {
@@ -68,17 +69,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    malloc2D(&matrix1, rows, cols);
-
     if (size > rows) {
         fprintf(stderr, "Error: Number of processes (%d) cannot exceed the number of rows (%d).\n", size, rows);
         return 1;
     }
 
-    for (int i = 0; i < cols; i++){
-        matrix1[0][i] = matrix[0][i];
-        matrix1[rows-1][i] = matrix[rows-1][i];
-    }
 
     // Work timing
     GET_TIME(work_start);
@@ -87,6 +82,23 @@ int main(int argc, char* argv[]) {
         if (debug_level == 1) {
             printf("Starting stencil operation...");
         }
+    }
+
+    malloc2D(&matrix1, rows, cols);
+
+    exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+
+    // Iterative stencil application
+    for (int i = 0; i < iterations; i++) {
+        mpi_apply_stencil(matrix, matrix1, rows, cols);
+
+        exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+
+        /*
+        double **temp = matrix1;
+        matrix1 = matrix;
+        matrix = temp; 
+        */
     }
 
     if (rank == 0) {

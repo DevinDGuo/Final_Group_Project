@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 #include <pthread.h>
+#include <string.h>
+#include <mpi.h>
 #include "timer.h"
 #include "utilities.h"
-#include <mpi.h>
-#include <string.h>
 #include "MyMPI.h"
+
 // include "my_barrier.h"
 
 void malloc2D(double ***x, int rows, int cols) {
@@ -383,4 +384,15 @@ void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, 
     } 
 }
 
+
+void mpi_apply_stencil(double **matrix, double **matrix1, int rows, int cols) {
+    for (int i = 1; i < rows - 1; i++) {
+        for (int j = 1; j < cols - 1; j++) {
+            matrix1[i][j] = (matrix[i - 1][j - 1] + matrix[i - 1][j] + matrix[i - 1][j + 1] +
+                             matrix[i][j - 1] + matrix[i][j + 1] +
+                             matrix[i + 1][j - 1] + matrix[i + 1][j] + matrix[i + 1][j + 1] +
+                             matrix[i][j]) / 9.0;
+        }
+    }
+}
 
