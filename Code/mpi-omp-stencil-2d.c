@@ -4,6 +4,7 @@
 #include "utilities.h"
 #include "timer.h"
 #include <mpi.h>
+#include <omp.h>
 #include "MyMPI.h"
 
 void printUsage() {
@@ -11,7 +12,8 @@ void printUsage() {
 }
 
 int main(int argc, char* argv[]) {
-    MPI_Init(&argc, &argv);
+    int provided = 4;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     if (argc < 5 || argc > 6) {
         printUsage();
         MPI_Finalize();
@@ -19,6 +21,8 @@ int main(int argc, char* argv[]) {
     }
 
     int rank, size;
+    
+    omp_set_num_threads(4);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -87,20 +91,29 @@ int main(int argc, char* argv[]) {
 
     read_row_striped_matrix_halo(inFile, (void***)&matrix1, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
 
-    #pragma omp parallel default(none)
+    #pragma omp parallel 
     {
         for (int i = 0; i < iterations; i++) {
 
             // Apply stencil operation
             stencil2D_MPI_OMP(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
             if (debug_level == 2) {
-                MPI_Barrier(MPI_COMM_WORLD);
-                print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                #pragma omp single
+                {
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                }
             }
             // Swap pointers for next iteration
-            double **temp = matrix1;
-            matrix1 = matrix;
-            matrix = temp; 
+            #pragma omp single
+            {
+                double **temp = matrix1;
+                matrix1 = matrix;
+                matrix = temp;
+            }
+
+            // Ensure all threads have the updated matrix pointers
+            #pragma omp barrier
 
             exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
         }

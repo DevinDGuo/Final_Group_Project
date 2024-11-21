@@ -4,7 +4,7 @@ CFLAGS = -g -Wall -Wstrict-prototypes -std=gnu99 -fopenmp
 LFLAGS = -lm -lpthread
 
 # Program names
-PROGS = print-2d make-2d stencil-2d pth-stencil-2d omp-stencil-2d mpi-stencil-2d
+PROGS = print-2d make-2d stencil-2d pth-stencil-2d omp-stencil-2d mpi-stencil-2d mpi-omp-stencil-2d
 
 # Object files
 OBJS = utilities.o my_barrier.o

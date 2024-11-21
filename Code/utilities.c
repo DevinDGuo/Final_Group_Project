@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <mpi.h>
+#include <omp.h>
 #include "timer.h"
 #include "utilities.h"
 #include "MyMPI.h"
