@@ -29,6 +29,8 @@ int get_size (MPI_Datatype t) {
    printf ("Error: Unrecognized argument to 'get_size'\n");
    fflush (stdout);
    MPI_Abort (MPI_COMM_WORLD, TYPE_ERROR);
+
+   return -1;
 }
 
 
@@ -313,7 +315,7 @@ void read_col_striped_matrix (
 {
    void      *buffer;        /* File buffer */
    int        datum_size;    /* Size of matrix element */
-   int        i, j;
+   int        i;
    int        id;            /* Process rank */
    FILE      *infileptr;     /* Input file ptr */
    int        local_cols;    /* Cols on this process */
@@ -395,11 +397,11 @@ void read_row_striped_matrix (
    int          id;           /* Process rank */
    FILE        *infileptr;    /* Input file pointer */
    int          local_rows;   /* Rows on this proc */
-   void       **lptr;         /* Pointer into 'subs' */
+   // void       **lptr;         /* Pointer into 'subs' */
    int          p;            /* Number of processes */
    void        *storage;      /* Pointer for local storage */
    MPI_Status   status;       /* Result of receive */
-   int          x;            /* Result of read */
+   // int          x;            /* Result of read */
 
    MPI_Comm_size (comm, &p);
    MPI_Comm_rank (comm, &id);
@@ -444,13 +446,10 @@ void read_row_striped_matrix (
 
    if (id == (p-1)) {
       for (i = 0; i < p-1; i++) {
-         x = fread (storage, datum_size,
-            BLOCK_SIZE(i,p,*m) * *n, infileptr);
          MPI_Send (storage, BLOCK_SIZE(i,p,*m) * *n, dtype,
             i, DATA_MSG, comm);
       }
-      x = fread (storage, datum_size, local_rows * *n,
-         infileptr);
+
       fclose (infileptr);
    } else {
       MPI_Recv (storage, local_rows * *n, dtype, p-1,
@@ -479,7 +478,7 @@ void read_block_vector (
    MPI_Status status;       /* Result of receive */
    int        id;           /* Process rank */
    int        p;            /* Number of processes */
-   int        x;            /* Result of read */
+   // int        x;            /* Result of read */
 
    datum_size = get_size (dtype);
    MPI_Comm_size(comm, &p);
@@ -511,13 +510,9 @@ void read_block_vector (
    *v = my_malloc (id, local_els * datum_size);
    if (id == (p-1)) {
       for (i = 0; i < p-1; i++) {
-         x = fread (*v, datum_size, BLOCK_SIZE(i,p,*n),
-            infileptr);
          MPI_Send (*v, BLOCK_SIZE(i,p,*n), dtype, i, DATA_MSG,
             comm);
       }
-      x = fread (*v, datum_size, BLOCK_SIZE(id,p,*n),
-             infileptr);
       fclose (infileptr);
    } else {
       MPI_Recv (*v, BLOCK_SIZE(id,p,*n), dtype, p-1, DATA_MSG,
@@ -538,7 +533,7 @@ void read_replicated_vector (
    MPI_Comm     comm)   /* IN - Communicator */
 {
    int        datum_size; /* Bytes per vector element */
-   int        i;
+   // int        i;
    int        id;         /* Process rank */
    FILE      *infileptr;  /* Input file pointer */
    int        p;          /* Number of processes */
@@ -706,10 +701,11 @@ void print_col_striped_matrix (
    int          n,       /* IN - Matrix cols */
    MPI_Comm     comm)    /* IN - Communicator */
 {
-   MPI_Status status;     /* Result of receive */
+   // MPI_Status status;     /* Result of receive */
    int        datum_size; /* Bytes per matrix element */
    void      *buffer;     /* Enough room to hold 1 row */
-   int        i, j;
+   int        i;
+   // int        j;
    int        id;         /* Process rank */
    int        p;          /* Number of processes */
    int*       rec_count;  /* Elements received per proc */
@@ -1003,21 +999,8 @@ void read_row_striped_matrix_halo(
 
    int halo_top, halo_bottom;
 
-   if (id == 0) {
-       // Process 0 has no top halo row
-       halo_top = 0;
-   } else {
-       // Other processes have a top halo row
-       halo_top = 1;
-   }
-
-   if (id == p - 1) {
-       // The last process has no bottom halo row
-       halo_bottom = 0;
-   } else {
-       // Other processes have a bottom halo row
-       halo_bottom = 1;
-   }
+   halo_top = (id == 0) ? 0 : 1;       // No top halo for process 0
+   halo_bottom = (id == p - 1) ? 0 : 1; // No bottom halo for the last process
 
    local_rows = BLOCK_SIZE(id, p, *m) + halo_top + halo_bottom;
 
@@ -1040,9 +1023,17 @@ void read_row_striped_matrix_halo(
    if (id == (p-1)) {
       for (i = 0; i < p - 1; i++) {
          x = fread(storage + datum_size * *n * halo_top, datum_size, BLOCK_SIZE(i, p, *m) * *n, infileptr);
+         if (x != BLOCK_SIZE(i, p, *m) * *n) {
+            fprintf(stderr, "Error: fread failed to read the expected number of elements for process %d. Read %d instead of %d.\n", i, x, BLOCK_SIZE(i, p, *m) * *n);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+         }
          MPI_Send(storage + datum_size * *n * halo_top, BLOCK_SIZE(i, p, *m) * *n, dtype, i, DATA_MSG, comm);
       }
       x = fread(storage + datum_size * *n * halo_top, datum_size, (local_rows - halo_top - halo_bottom) * *n, infileptr);
+      if (x != (local_rows - halo_top - halo_bottom) * *n) {
+        fprintf(stderr, "Error: fread failed to read the expected number of elements for process %d. Read %d instead of %d.\n", p-1, x, (local_rows - halo_top - halo_bottom) * *n);
+        MPI_Abort(MPI_COMM_WORLD, 1);
+      }
       fclose(infileptr);
    } else {
       MPI_Recv(storage + datum_size * *n * halo_top, (local_rows - halo_top - halo_bottom) * *n, dtype, p-1, DATA_MSG, comm, &status);
@@ -1073,21 +1064,8 @@ void print_row_striped_matrix_halo(
 
    int halo_top, halo_bottom;
 
-   if (id == 0) {
-       // Process 0 has no top halo row
-       halo_top = 0;
-   } else {
-       // Other processes have a top halo row
-       halo_top = 1;
-   }
-
-   if (id == p - 1) {
-       // The last process has no bottom halo row
-       halo_bottom = 0;
-   } else {
-       // Other processes have a bottom halo row
-       halo_bottom = 1;
-   }
+   halo_top = (id == 0) ? 0 : 1;       // No top halo for process 0
+   halo_bottom = (id == p - 1) ? 0 : 1; // No bottom halo for the last process
 
    local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
 
@@ -1251,21 +1229,10 @@ void exchange_row_striped_values(void ***subs, MPI_Datatype dtype, int m, int n,
 
    int halo_top, halo_bottom;
 
-   if (id == 0) {
-      // Process 0 has no top halo row
-      halo_top = 0;
-   } else {
-      // Other processes have a top halo row
-      halo_top = 1;
-   }
+   // Determine halo rows for top and bottom
+   halo_top = (id == 0) ? 0 : 1;       // No top halo for process 0
+   halo_bottom = (id == p - 1) ? 0 : 1; // No bottom halo for the last process
 
-   if (id == p - 1) {
-      // The last process has no bottom halo row
-      halo_bottom = 0;
-   } else {
-      // Other processes have a bottom halo row
-      halo_bottom = 1;
-   }
 
    int local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
 

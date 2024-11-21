@@ -7,7 +7,7 @@
 #include "MyMPI.h"
 
 void printUsage() {
-    printf("Usage: mpirun -np <num of processes> ./mpi-stencil-2d <num iterations> <input file> <output file> <debug level> <num threads> <all-stacked-file-name.raw (optional)>\n");
+    printf("Usage: mpirun -np <num of processes> ./mpi-stencil-2d <num iterations> <input file> <output file> <debug level> <all-stacked-file-name.raw (optional)>\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
 
     if (rank == 0) {
         if (debug_level == 1) {
-            printf("Starting stencil operation...");
+            printf("Starting stencil operation...\n");
         }
     }
 
@@ -91,16 +91,10 @@ int main(int argc, char* argv[]) {
 
         // Apply stencil operation
         stencil2DMPI(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-
-        if (allIterationsFile) {
-            if (iterations == 0) {
-                write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-            } else {
-                append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-            }
-            
+        if (debug_level == 2) {
+            MPI_Barrier(MPI_COMM_WORLD);
+            print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
         }
-        
         // Swap pointers for next iteration
         double **temp = matrix1;
         matrix1 = matrix;
@@ -109,13 +103,14 @@ int main(int argc, char* argv[]) {
         exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
     }
 
-    if (allIterationsFile) {
-        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+    if (debug_level == 2) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
     }
 
     if (rank == 0) {
         if (debug_level == 1) {
-            printf("Ending stencil operation...");
+            printf("Ending stencil operation...\n");
         }
     }
 
