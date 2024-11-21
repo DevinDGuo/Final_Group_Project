@@ -73,9 +73,9 @@ int main(int argc, char* argv[]) {
         return 1; 
     }
 
-    for (int i = 0; i < cols; i++){
-        matrix1[0][i] = matrix[0][i];
-        matrix1[rows-1][i] = matrix[rows-1][i];
+    for (int i = 0; i < rows; i++){
+        matrix1[i][0] = matrix[i][0];
+        matrix1[i][cols-1] = matrix[i][cols-1];
     }
     
     // Work timing
