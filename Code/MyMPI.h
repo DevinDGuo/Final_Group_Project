@@ -74,4 +74,6 @@ void print_row_striped_matrix_halo (void **, MPI_Datatype, int, int, MPI_Comm);
 
 void write_row_striped_matrix_halo (char*, void **, MPI_Datatype, int, int, MPI_Comm);
 
+void append_row_striped_matrix_halo (char*, void **, MPI_Datatype, int, int, MPI_Comm);
+
 void exchange_row_striped_values(void ***, MPI_Datatype, int, int, MPI_Comm);

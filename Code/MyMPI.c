@@ -1187,6 +1187,60 @@ void write_row_striped_matrix_halo(
    }
 }
 
+void append_row_striped_matrix_halo(
+   char *outputFile,
+   void **a,
+   MPI_Datatype dtype,
+   int m,
+   int n,
+   MPI_Comm comm)
+{
+   int id, p, local_rows, datum_size, max_block_size;
+   void *bstorage;
+   void **b;
+   MPI_Status status;
+   int prompt;
+
+   MPI_Comm_rank(comm, &id);
+   MPI_Comm_size(comm, &p);
+
+   local_rows = BLOCK_SIZE(id, p, m);
+
+   if (id == 0) {
+      FILE *outFile = fopen(outputFile, "ab");
+      if (outFile == NULL) {
+          printf("Error: Unable to open output file for writing dimensions.\n");
+          return;  
+      }
+      fwrite(&m, sizeof(int), 1, outFile);
+      fwrite(&n, sizeof(int), 1, outFile);
+      fclose(outFile);
+   }
+
+   MPI_Barrier(comm);
+
+   if (id == 0) {
+      write_submatrix(outputFile, a, dtype, local_rows, n);
+
+      if (p > 1) {
+         datum_size = get_size(dtype);
+         max_block_size = BLOCK_SIZE(p - 1, p, m);
+         my_allocate2d(id, max_block_size, n, datum_size, &b, &bstorage);
+
+         for (int i = 1; i < p; i++) {
+            MPI_Send(&prompt, 1, MPI_INT, i, PROMPT_MSG, MPI_COMM_WORLD);
+            MPI_Recv(bstorage, BLOCK_SIZE(i, p, m) * n, dtype, i, RESPONSE_MSG, MPI_COMM_WORLD, &status);
+            write_submatrix(outputFile, b, dtype, BLOCK_SIZE(i, p, m), n);
+         }
+         free(b);
+         free(bstorage);
+      }
+   } else {
+      MPI_Recv(&prompt, 1, MPI_INT, 0, PROMPT_MSG, MPI_COMM_WORLD, &status);
+      MPI_Send(a[1], local_rows * n, dtype, 0, RESPONSE_MSG, MPI_COMM_WORLD);
+   }
+}
+
 void exchange_row_striped_values(void ***subs, MPI_Datatype dtype, int m, int n, MPI_Comm comm) {
    int id, p;
 
