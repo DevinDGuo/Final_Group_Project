@@ -87,26 +87,30 @@ int main(int argc, char* argv[]) {
 
     read_row_striped_matrix_halo(inFile, (void***)&matrix1, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
 
-    if (debug_level == 2) {
-        write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-    }
-
     for (int i = 0; i < iterations; i++) {
 
         // Apply stencil operation
         stencil2DMPI(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
 
+        if (allIterationsFile) {
+            if (iterations == 0) {
+                write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+            } else {
+                append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+            }
+            
+        }
+        
         // Swap pointers for next iteration
         double **temp = matrix1;
         matrix1 = matrix;
         matrix = temp; 
 
-        if (debug_level == 2) {
-            append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-        }
-
         exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+    }
 
+    if (allIterationsFile) {
+        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
     }
 
     if (rank == 0) {

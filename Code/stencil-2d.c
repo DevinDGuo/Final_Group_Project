@@ -39,6 +39,11 @@ int main(int argc, char* argv[]) {
         matrix1[i][cols-1] = matrix[i][cols-1];
     }
 
+    for (int j = 0; j < cols; j++) {
+        matrix1[0][j] = matrix[0][j];           // First row
+        matrix1[rows - 1][j] = matrix[rows - 1][j]; // Last row
+    }
+
     // Work timing
     GET_TIME(work_start);
 
