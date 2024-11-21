@@ -25,6 +25,8 @@ int main(int argc, char* argv[]) {
 
     double overall_start, overall_end, work_start, work_end, other_total = 0.0;
 
+    double other_start, other_end;
+
     // Start overall timing
     GET_TIME(overall_start);
 
@@ -91,10 +93,26 @@ int main(int argc, char* argv[]) {
 
         // Apply stencil operation
         stencil2DMPI(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+        
+        if (allIterationsFile) {
+            MPI_Barrier(MPI_COMM_WORLD);
+
+            GET_TIME(other_start);
+            if (i == 0) {
+                write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+            } else {
+                append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+            }
+            GET_TIME(other_end);
+
+            other_total += other_end - other_start;
+        }
+
         if (debug_level == 2) {
             MPI_Barrier(MPI_COMM_WORLD);
             print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
         }
+
         // Swap pointers for next iteration
         double **temp = matrix1;
         matrix1 = matrix;
@@ -103,8 +121,16 @@ int main(int argc, char* argv[]) {
         exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
     }
 
-    if (debug_level == 2) {
+    if (allIterationsFile) {
         MPI_Barrier(MPI_COMM_WORLD);
+        GET_TIME(other_start);
+        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+        GET_TIME(other_end);
+
+        other_total += other_end - other_start;
+    }
+
+    if (debug_level == 2) {
         print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
     }
 

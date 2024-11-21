@@ -1184,15 +1184,10 @@ void append_row_striped_matrix_halo(
 
    local_rows = BLOCK_SIZE(id, p, m);
 
-   if (id == 0) {
-      FILE *outFile = fopen(outputFile, "ab");
-      if (outFile == NULL) {
-          printf("Error: Unable to open output file for writing dimensions.\n");
-          return;  
-      }
-      fwrite(&m, sizeof(int), 1, outFile);
-      fwrite(&n, sizeof(int), 1, outFile);
-      fclose(outFile);
+   FILE *outFile = fopen(outputFile, "ab");
+   if (outFile == NULL) {
+      printf("Error: Unable to open output file for writing dimensions.\n");
+      return;  
    }
 
    MPI_Barrier(comm);
