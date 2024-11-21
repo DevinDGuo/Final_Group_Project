@@ -59,7 +59,8 @@ int main(int argc, char* argv[]) {
     }
 
     read_row_striped_matrix_halo(inFile, (void***)&matrix, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
-
+    exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+    
     if (rank == 0) {
         if (debug_level == 0) {
             if (matrix == NULL) {
@@ -87,7 +88,7 @@ int main(int argc, char* argv[]) {
     read_row_striped_matrix_halo(inFile, (void***)&matrix1, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
 
     for (int i = 0; i < iterations; i++) {
-        exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+
         // Apply stencil operation
         stencil2DMPI(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
 
@@ -95,6 +96,8 @@ int main(int argc, char* argv[]) {
         double **temp = matrix1;
         matrix1 = matrix;
         matrix = temp; 
+
+        exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
 
     }
 
