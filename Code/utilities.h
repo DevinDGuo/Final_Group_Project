@@ -66,4 +66,6 @@ void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, 
 
 void stencil2DMPI(double **, double **, MPI_Datatype, int, int, MPI_Comm);
 
+void stencil2D_MPI_OMP(double **subs, double **subs1, MPI_Datatype dtype, int m, int n, MPI_Comm comm);
+
 #endif /* UTILITIES_H */

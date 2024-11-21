@@ -31,6 +31,9 @@ omp-stencil-2d: $(OBJS) omp-stencil-2d.o
 mpi-stencil-2d: $(OBJS) mpi-stencil-2d.o
 	$(CC) $(CFLAGS) -o mpi-stencil-2d $(OBJS) mpi-stencil-2d.o MyMPI.c $(LFLAGS)
 
+mpi-omp-stencil-2d: $(OBJS) mpi-omp-stencil-2d.o
+	$(CC) $(CFLAGS) -o mpi-omp-stencil-2d $(OBJS) mpi-omp-stencil-2d.o MyMPI.c $(LFLAGS)
+
 # Compile object files
 utilities.o: utilities.c utilities.h my_barrier.h
 	$(CC) $(CFLAGS) -c utilities.c -o utilities.o
@@ -55,6 +58,10 @@ omp-stencil-2d.o: omp-stencil-2d.c utilities.h
 
 mpi-stencil-2d.o: mpi-stencil-2d.c utilities.h
 	$(CC) $(CFLAGS) -c mpi-stencil-2d.c -o mpi-stencil-2d.o
+
+mpi-omp-stencil-2d.o: mpi-omp-stencil-2d.c utilities.h
+	$(CC) $(CFLAGS) -c mpi-omp-stencil-2d.c -o mpi-omp-stencil-2d.o
+
 # Clean up
 clean:
 	rm -f *.o *.dat core* $(PROGS)
