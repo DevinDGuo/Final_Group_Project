@@ -140,7 +140,6 @@ void stencil2D(int numIterations, int rows, int cols, double **matrix, double **
 
 
     for (int iter = 0; iter < numIterations; iter++) {
-        // Apply the stencil operation to the inner matrix cells only
         for (int i = 1; i < rows - 1; i++) {
             for (int j = 1; j < cols - 1; j++) {
                 // 9-point stencil calculation
@@ -385,13 +384,27 @@ void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, 
 }
 
 
-void mpi_apply_stencil(double **matrix, double **matrix1, int rows, int cols) {
-    for (int i = 1; i < rows - 1; i++) {
-        for (int j = 1; j < cols - 1; j++) {
-            matrix1[i][j] = (matrix[i - 1][j - 1] + matrix[i - 1][j] + matrix[i - 1][j + 1] +
-                             matrix[i][j - 1] + matrix[i][j + 1] +
-                             matrix[i + 1][j - 1] + matrix[i + 1][j] + matrix[i + 1][j + 1] +
-                             matrix[i][j]) / 9.0;
+void stencil2DMPI(double **subs, double **subs1, MPI_Datatype dtype, int m, int n, MPI_Comm comm) {
+    int id, p;
+
+    MPI_Comm_size(comm, &p);
+    MPI_Comm_rank(comm, &id);
+
+    int halo_top, halo_bottom;
+
+    // Determine if the process has halo rows
+    halo_top = (id == 0) ? 0 : 1;          // No top halo for process 0
+    halo_bottom = (id == p - 1) ? 0 : 1;   // No bottom halo for the last process
+
+    // Calculate the number of local rows, including halo rows
+    int local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
+
+    // Perform the stencil operation
+    for (int i = 1; i < local_rows - 1; i++) {
+        for (int j = 1; j < n - 1; j++) {
+            subs1[i][j] = (subs[i - 1][j - 1] + subs[i - 1][j] + subs[i - 1][j + 1] +
+                           subs[i][j + 1] + subs[i + 1][j + 1] + subs[i + 1][j] +
+                           subs[i + 1][j - 1] + subs[i][j - 1] + subs[i][j]) / 9.0;
         }
     }
 }

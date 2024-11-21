@@ -64,6 +64,6 @@ void *my_malloc (int id, int bytes);
 
 void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, void **storage);
 
-void mpi_apply_stencil(double **matrix, double **matrix1, int rows, int cols);
+void stencil2DMPI(double **, double **, MPI_Datatype, int, int, MPI_Comm);
 
 #endif /* UTILITIES_H */
