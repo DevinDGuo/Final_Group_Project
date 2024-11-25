@@ -409,3 +409,27 @@ void stencil2DMPI(double **subs, double **subs1, MPI_Datatype dtype, int m, int 
     }
 }
 
+void stencil2D_MPI_OMP(double **subs, double **subs1, MPI_Datatype dtype, int m, int n, MPI_Comm comm) {
+   int id, p;
+
+   MPI_Comm_size(comm, &p);
+   MPI_Comm_rank(comm, &id);
+
+   int halo_top, halo_bottom;
+
+   // Determine if the process has halo rows
+   halo_top = (id == 0) ? 0 : 1;          // No top halo for process 0
+   halo_bottom = (id == p - 1) ? 0 : 1;   // No bottom halo for the last process
+
+   // Calculate the number of local rows, including halo rows
+   int local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
+   
+   #pragma omp parallel for
+   for (int i = 1; i < local_rows - 1; i++) {
+      for (int j = 1; j < n - 1; j++) {
+         subs1[i][j] = (subs[i - 1][j - 1] + subs[i - 1][j] + subs[i - 1][j + 1] +
+                        subs[i][j + 1] + subs[i + 1][j + 1] + subs[i + 1][j] +
+                        subs[i + 1][j - 1] + subs[i][j - 1] + subs[i][j]) / 9.0;
+      }
+   }
+}
