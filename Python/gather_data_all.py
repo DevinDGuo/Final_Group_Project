@@ -18,7 +18,7 @@ MPI_CSV = os.path.join(DATA_DIR, sys.argv[3])
 MPI_OMP_CSV = os.path.join(DATA_DIR, sys.argv[4])
 
 # Change to the 'code' directory
-os.chdir("../code")
+os.chdir("../Code")
 
 # Clean and compile the project
 subprocess.run(["make", "clean", "all"])
@@ -27,7 +27,6 @@ subprocess.run(["make", "clean", "all"])
 MATRIX_SIZES = [5000, 10000, 20000, 40000]
 THREAD_COUNTS = [1, 2, 4, 8, 16]
 PROCESS_COUNTS = [1, 2, 4, 8, 16, 32, 64, 128]
-OMP_THREAD_COUNTS = [1, 2, 4, 8, 16]
 
 # Number of time steps
 TS = 12
@@ -101,10 +100,10 @@ for n in MATRIX_SIZES:
 
     # Run MPI-OMP stencil
     for p in PROCESS_COUNTS:
-        for t in OMP_THREAD_COUNTS:
+        for t in THREAD_COUNTS:
             print(f"Running MPI-OMP driver: {TS} iterations for matrix size {n}x{n} with {p} processes and {t} threads...")
             result = subprocess.run(
-                ["mpirun", "-np", str(p), "./mpi-stencil-2d", str(TS), INPUT_FILE, OUTPUT_FILE, str(t), "0"],
+                ["mpirun", "-np", str(p), "./mpi-omp-stencil-2d", str(TS), INPUT_FILE, OUTPUT_FILE, str(t), "0"],
                 capture_output=True,
                 text=True,
             )

@@ -167,6 +167,7 @@ int main(int argc, char* argv[]) {
     double work_time = work_end - work_start - other_total;
     double total_other_time = overall_time - work_time;
 
+    MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0) {
         if (debug_level >= 0) {
             printf("Time Overall: %.5f seconds\n", overall_time);

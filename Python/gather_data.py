@@ -22,8 +22,8 @@ os.chdir("../code")
 subprocess.run(["make", "clean", "all"])
 
 # Matrix sizes (n) and thread counts (t)
-MATRIX_SIZES = [5000, 10000, 20000, 40000]
-THREAD_COUNTS = [1, 2, 4, 8, 16]
+MATRIX_SIZES = [500, 1000, 2000, 4000]
+THREAD_COUNTS = [1, 2, 4]
 
 # Number of time steps
 TS = 12
