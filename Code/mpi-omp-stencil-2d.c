@@ -8,7 +8,7 @@
 #include "MyMPI.h"
 
 void printUsage() {
-    printf("Usage: mpirun -np <num of processes> ./mpi-stencil-2d <num iterations> <input file> <output file> <num omp threads> <debug level> <all-stacked-file-name.raw (optional)>\n");
+    printf("Usage: mpirun -np <num of processes> ./mpi-omp-stencil-2d <num iterations> <input file> <output file> <num omp threads> <debug level> <all-stacked-file-name.raw (optional)>\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -61,9 +61,7 @@ int main(int argc, char* argv[]) {
     // Read matrix and distribute among processes
     read_row_striped_matrix_halo(inFile, (void***)&matrix, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
     exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-    int halo_top = (rank == 0) ? 0 : 1;
-    int halo_bottom = (rank == size - 1) ? 0 : 1;
-    int local_rows = BLOCK_SIZE(rank, size, rows) + halo_top + halo_bottom;
+    int local_rows = BLOCK_SIZE(rank, size, rows);
 
     // Cap threads
     int effective_threads = (local_rows < num_threads) ? local_rows : num_threads;

@@ -423,7 +423,7 @@ void stencil2D_MPI_OMP(double **subs, double **subs1, MPI_Datatype dtype, int m,
 
    // Calculate the number of local rows, including halo rows
    int local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
-   
+
    #pragma omp parallel for
    for (int i = 1; i < local_rows - 1; i++) {
       for (int j = 1; j < n - 1; j++) {
