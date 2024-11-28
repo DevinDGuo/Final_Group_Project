@@ -60,7 +60,7 @@ void stencil2DOMP(int numIterations, int debugLevel, int rows, int cols, double 
 // Function to free dynamically allocated memory for a 2D array
 void my_free(void **matrix);
 
-void *my_malloc (int id, int bytes);
+void *my_malloc (int id, size_t bytes);
 
 void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, void **storage);
 

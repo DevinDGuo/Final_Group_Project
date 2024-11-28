@@ -358,9 +358,10 @@ void my_free(void **matrix) {
 
 void *my_malloc (
    int id,     /* IN - Process rank */
-   int bytes)  /* IN - Bytes to allocate */
+   size_t bytes)  /* IN - Bytes to allocate */
 {
    void *buffer;
+   printf("Process: %d, trying to malloc: %ld bytes.\n", id, bytes);
    if ((buffer = malloc ((size_t) bytes)) == NULL) {
       printf ("Error: Malloc failed for process %d\n", id);
       fflush (stdout);
@@ -370,18 +371,40 @@ void *my_malloc (
 }
 
 void my_allocate2d(int id, int local_rows, int n, int datum_size, void ***subs, void **storage) {
+    // Convert to size_t to ensure no overflow in memory size calculations
+    size_t rows = (size_t)local_rows;
+    size_t cols = (size_t)n;
+    size_t element_size = (size_t)datum_size;
+
+    // Calculate total bytes required for the matrix and row pointers
+    size_t total_storage_bytes = rows * cols * element_size;
+    size_t total_subs_bytes = rows * sizeof(void *);
+
+    // Overflow check for total storage bytes
+    if (cols != 0 && element_size != 0 && (total_storage_bytes / cols / element_size != rows)) {
+        MPI_Abort(MPI_COMM_WORLD, MALLOC_ERROR);
+    }
+
+    // Overflow check for row pointers
+    if (total_subs_bytes / sizeof(void *) != rows) {
+        MPI_Abort(MPI_COMM_WORLD, MALLOC_ERROR);
+    }
+
     // Allocate storage for the matrix
-    *storage = (void *) my_malloc(id, local_rows * n * datum_size);
-    *subs = (void **) my_malloc(id, local_rows * sizeof(void *)); 
+    *storage = my_malloc(id, total_storage_bytes);
+
+    // Allocate storage for the row pointers
+    *subs = my_malloc(id, total_subs_bytes);
 
     // Initialize the subs pointers
-    void **lptr = (void **) *subs; 
+    void **lptr = (void **)*subs;
     void *rptr = *storage;
-    for (int i = 0; i < local_rows; i++) {
-        lptr[i] = rptr; // Directly assign the pointer
-        rptr += n * datum_size; // Move the pointer forward
-    } 
+    for (size_t i = 0; i < rows; i++) {
+        lptr[i] = rptr;
+        rptr = (char *)rptr + cols * element_size; // Pointer arithmetic for bytes
+    }
 }
+
 
 
 void stencil2DMPI(double **subs, double **subs1, MPI_Datatype dtype, int m, int n, MPI_Comm comm) {
