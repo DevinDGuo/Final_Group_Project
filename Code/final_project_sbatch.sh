@@ -4,16 +4,18 @@
 #SBATCH --mail-user=ddguo@coastal.edu
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --partition=compute
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=128
-#SBATCH --mem=250G
+#SBATCH --nodes=8
+#SBATCH --ntasks-per-node=2
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=20G
 #SBATCH --account=ccu108
 #SBATCH --export=ALL
-#SBATCH -t 02:15:00
+#SBATCH -t 05:00:00
 
-module load cpu/0.17.3b  gcc/10.2.0/npcyll4 openmpi/4.1.1
+module load cpu/0.17.3b gcc/10.2.0/npcyll4 openmpi/4.1.1
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+mpirun -np 16 --map-by ppr:2:node:PE=64 ./mpi-omp-stencil-2d 12 A.dat B.dat 64 0
 
 module load python3
-
-# Run the job by calling your script
 python3 ../Python/gather_data_all.py pthread.csv omp.csv mpi.csv mpi-omp.csv
