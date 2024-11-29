@@ -61,10 +61,12 @@ int main(int argc, char* argv[]) {
     // Read matrix and distribute among processes
     read_row_striped_matrix_halo(inFile, (void***)&matrix, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
     exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-    int local_rows = BLOCK_SIZE(rank, size, rows);
+
+
+    int local_rows_threads = BLOCK_SIZE(rank, size, rows);
 
     // Cap threads
-    int effective_threads = (local_rows < num_threads) ? local_rows : num_threads;
+    int effective_threads = (local_rows_threads < num_threads) ? local_rows_threads : num_threads;
     omp_set_num_threads(effective_threads);
 
     if (size > rows) {
@@ -74,12 +76,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (debug_level == 1) {
-        printf("Process %d: Using %d threads for %d local rows (out of %d total rows).\n", rank, effective_threads, local_rows, rows);
+        printf("Process %d: Using %d threads for %d local rows (out of %d total rows).\n", rank, effective_threads, local_rows_threads, rows);
     }
-
-    // Work timing
-    GET_TIME(work_start);
-
 
     read_row_striped_matrix_halo(inFile, (void***)&matrix1, MPI_DOUBLE, &rows, &cols, MPI_COMM_WORLD);
 
@@ -87,56 +85,46 @@ int main(int argc, char* argv[]) {
         printf("Starting stencil operation...\n");
     }
 
-    // Hybrid MPI+OMP stencil computation
+    // Work timing
+    GET_TIME(work_start);
+
     #pragma omp parallel
     {
         for (int i = 0; i < iterations; i++) {
             // Apply stencil operation
             stencil2D_MPI_OMP(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-
-            // Ensure that only one thread handles file I/O
-            #pragma omp single
+            
+            #pragma omp master
             {
+                // File I/O operations (if needed)
                 if (allIterationsFile) {
                     GET_TIME(other_start);
-                    {
-                        if (i == 0) {
-                            write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-                        } else {
-                            append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
-                        }
+                    if (i == 0) {
+                        write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                    } else {
+                        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
                     }
                     GET_TIME(other_end);
-
                     other_total += other_end - other_start;
                 }
 
-            }
-
-            if (debug_level == 2) {
-                #pragma omp single
-                {
-                    MPI_Barrier(MPI_COMM_WORLD);
+                // Debug printing (if needed)
+                if (debug_level == 2) {
                     print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
                 }
-            }
 
-            // Swap pointers for the next iteration
-            #pragma omp single
-            {
+                // Pointer swap and halo exchange are part of computation
                 double **temp = matrix1;
                 matrix1 = matrix;
                 matrix = temp;
+                
+                exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
             }
-
-            // Ensure all threads have updated pointers before communication
             #pragma omp barrier
-
-            // Halo exchange for updated data
-            #pragma omp single
-            exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
         }
     }
+
+    GET_TIME(work_end);
 
     if (allIterationsFile) {
         MPI_Barrier(MPI_COMM_WORLD);
@@ -150,8 +138,6 @@ int main(int argc, char* argv[]) {
     if (rank == 0 && debug_level == 1) {
         printf("Ending stencil operation...\n");
     }
-
-    GET_TIME(work_end);
 
     // Write final result
     write_row_striped_matrix_halo(outFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);

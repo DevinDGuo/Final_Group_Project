@@ -7,6 +7,7 @@
 #include "timer.h"
 #include "utilities.h"
 #include "MyMPI.h"
+#include <omp.h>
 
 // include "my_barrier.h"
 
@@ -361,7 +362,6 @@ void *my_malloc (
    size_t bytes)  /* IN - Bytes to allocate */
 {
    void *buffer;
-   printf("Process: %d, trying to malloc: %ld bytes.\n", id, bytes);
    if ((buffer = malloc ((size_t) bytes)) == NULL) {
       printf ("Error: Malloc failed for process %d\n", id);
       fflush (stdout);
@@ -447,7 +447,7 @@ void stencil2D_MPI_OMP(double **subs, double **subs1, MPI_Datatype dtype, int m,
    // Calculate the number of local rows, including halo rows
    int local_rows = BLOCK_SIZE(id, p, m) + halo_top + halo_bottom;
 
-   #pragma omp parallel for
+   #pragma omp for
    for (int i = 1; i < local_rows - 1; i++) {
       for (int j = 1; j < n - 1; j++) {
          subs1[i][j] = (subs[i - 1][j - 1] + subs[i - 1][j] + subs[i - 1][j + 1] +
