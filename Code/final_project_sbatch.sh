@@ -7,7 +7,7 @@
 #SBATCH --nodes=8
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=64
-#SBATCH --mem=150G
+#SBATCH --mem=200G
 #SBATCH --account=ccu108
 #SBATCH --export=ALL
 #SBATCH -t 05:00:00

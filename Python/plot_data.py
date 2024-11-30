@@ -27,21 +27,26 @@ def plot_data(filename):
     # Load data from the CSV file
     data = pd.read_csv(filename)
     
+    # Determine if this is MPI data
+    is_mpi = 'mpi' in filename.lower()
+    x_axis_label = 'Processes' if is_mpi else 'Threads'
+    parallelism_col = 'Processes' if is_mpi else 'Threads'
+    
     # Extract unique matrix sizes
     unique_matrix_sizes = data['Matrix Size'].unique()
     
-    # Plot T_overall, T_computation, and T_other as functions of threads for each matrix size
+    # Plot T_overall, T_computation, and T_other as functions of threads/processes for each matrix size
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
         
         plt.figure(figsize=(10, 6))
-        plt.plot(subset['Threads'], subset['Time Overall (s)'], label='T_overall', marker='o')
-        plt.plot(subset['Threads'], subset['Time Computation (s)'], label='T_computation', marker='o')
-        plt.plot(subset['Threads'], subset['Time Other (s)'], label='T_other', marker='o')
+        plt.plot(subset[parallelism_col], subset['Time Overall (s)'], label='T_overall', marker='o')
+        plt.plot(subset[parallelism_col], subset['Time Computation (s)'], label='T_computation', marker='o')
+        plt.plot(subset[parallelism_col], subset['Time Other (s)'], label='T_other', marker='o')
         
-        plt.xlabel('Threads (p)')
+        plt.xlabel(f'{x_axis_label} (p)')
         plt.ylabel('Time (seconds)')
-        plt.title(f'Time Components vs Threads for Matrix Size {matrix_size}')
+        plt.title(f'Time Components vs {x_axis_label} for Matrix Size {matrix_size}')
         plt.legend()
         plt.grid(True)
         timing_filename = os.path.join(output_dir, f"{base_filename}_time_components_matrix_{matrix_size}.pdf")
@@ -53,15 +58,15 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_overall = subset.loc[subset['Threads'] == 1, 'Time Overall (s)'].values[0]
+        base_time_overall = subset.loc[subset[parallelism_col] == 1, 'Time Overall (s)'].values[0]
         speedup_overall = calculate_speedup(base_time_overall, subset['Time Overall (s)'])
         
-        plt.plot(subset['Threads'], speedup_overall, label=f'Speedup Overall (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], speedup_overall, label=f'Speedup Overall (n={matrix_size})', marker='o')
     
-    plt.plot(subset['Threads'], subset['Threads'], label='Ideal Speedup', linestyle='--', color='gray')
-    plt.xlabel('Threads (p)')
+    plt.plot(subset[parallelism_col], subset[parallelism_col], label='Ideal Speedup', linestyle='--', color='gray')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Speedup')
-    plt.title('Speedup (Overall) vs Threads')
+    plt.title(f'Speedup (Overall) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     speedup_overall_filename = os.path.join(output_dir, f"{base_filename}_speedup_overall.pdf")
@@ -73,15 +78,15 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_computation = subset.loc[subset['Threads'] == 1, 'Time Computation (s)'].values[0]
+        base_time_computation = subset.loc[subset[parallelism_col] == 1, 'Time Computation (s)'].values[0]
         speedup_computation = calculate_speedup(base_time_computation, subset['Time Computation (s)'])
         
-        plt.plot(subset['Threads'], speedup_computation, label=f'Speedup Computation (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], speedup_computation, label=f'Speedup Computation (n={matrix_size})', marker='o')
     
-    plt.plot(subset['Threads'], subset['Threads'], label='Ideal Speedup', linestyle='--', color='gray')
-    plt.xlabel('Threads (p)')
+    plt.plot(subset[parallelism_col], subset[parallelism_col], label='Ideal Speedup', linestyle='--', color='gray')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Speedup')
-    plt.title('Speedup (Computation) vs Threads')
+    plt.title(f'Speedup (Computation) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     speedup_computation_filename = os.path.join(output_dir, f"{base_filename}_speedup_computation.pdf")
@@ -93,16 +98,16 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_overall = subset.loc[subset['Threads'] == 1, 'Time Overall (s)'].values[0]
+        base_time_overall = subset.loc[subset[parallelism_col] == 1, 'Time Overall (s)'].values[0]
         speedup_overall = calculate_speedup(base_time_overall, subset['Time Overall (s)'])
-        efficiency_overall = calculate_efficiency(speedup_overall, subset['Threads'])
+        efficiency_overall = calculate_efficiency(speedup_overall, subset[parallelism_col])
         
-        plt.plot(subset['Threads'], efficiency_overall, label=f'Efficiency Overall (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], efficiency_overall, label=f'Efficiency Overall (n={matrix_size})', marker='o')
     
     plt.axhline(1.0, label='Ideal Efficiency', linestyle='--', color='gray')
-    plt.xlabel('Threads (p)')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Efficiency')
-    plt.title('Efficiency (Overall) vs Threads')
+    plt.title(f'Efficiency (Overall) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     efficiency_overall_filename = os.path.join(output_dir, f"{base_filename}_efficiency_overall.pdf")
@@ -114,16 +119,16 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_computation = subset.loc[subset['Threads'] == 1, 'Time Computation (s)'].values[0]
+        base_time_computation = subset.loc[subset[parallelism_col] == 1, 'Time Computation (s)'].values[0]
         speedup_computation = calculate_speedup(base_time_computation, subset['Time Computation (s)'])
-        efficiency_computation = calculate_efficiency(speedup_computation, subset['Threads'])
+        efficiency_computation = calculate_efficiency(speedup_computation, subset[parallelism_col])
         
-        plt.plot(subset['Threads'], efficiency_computation, label=f'Efficiency Computation (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], efficiency_computation, label=f'Efficiency Computation (n={matrix_size})', marker='o')
     
     plt.axhline(1.0, label='Ideal Efficiency', linestyle='--', color='gray')
-    plt.xlabel('Threads (p)')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Efficiency')
-    plt.title('Efficiency (Computation) vs Threads')
+    plt.title(f'Efficiency (Computation) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     efficiency_computation_filename = os.path.join(output_dir, f"{base_filename}_efficiency_computation.pdf")
@@ -135,20 +140,20 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_overall = subset.loc[subset['Threads'] == 1, 'Time Overall (s)'].values[0]
+        base_time_overall = subset.loc[subset[parallelism_col] == 1, 'Time Overall (s)'].values[0]
         speedup_overall = calculate_speedup(base_time_overall, subset['Time Overall (s)'])
         
-        # Calculate e_overall for each thread count
-        e_overall = calculate_serial_fraction(speedup_overall, subset['Threads'])
+        # Calculate e_overall for each thread/process count
+        e_overall = calculate_serial_fraction(speedup_overall, subset[parallelism_col])
         
         # Set negative values to 0
         e_overall = e_overall.clip(lower=0)
         
-        plt.plot(subset['Threads'], e_overall, label=f'e_overall (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], e_overall, label=f'e_overall (n={matrix_size})', marker='o')
     
-    plt.xlabel('Threads (p)')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Serial Fraction (e)')
-    plt.title('Experimentally Determined Serial Fraction (e_overall) vs Threads')
+    plt.title(f'Experimentally Determined Serial Fraction (e_overall) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     e_overall_filename = os.path.join(output_dir, f"{base_filename}_e_overall.pdf")
@@ -160,20 +165,20 @@ def plot_data(filename):
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:
         subset = data[data['Matrix Size'] == matrix_size]
-        base_time_computation = subset.loc[subset['Threads'] == 1, 'Time Computation (s)'].values[0]
+        base_time_computation = subset.loc[subset[parallelism_col] == 1, 'Time Computation (s)'].values[0]
         speedup_computation = calculate_speedup(base_time_computation, subset['Time Computation (s)'])
         
-        # Calculate e_computation for each thread count
-        e_computation = calculate_serial_fraction(speedup_computation, subset['Threads'])
+        # Calculate e_computation for each thread/process count
+        e_computation = calculate_serial_fraction(speedup_computation, subset[parallelism_col])
         
         # Set negative values to 0
         e_computation = e_computation.clip(lower=0)
         
-        plt.plot(subset['Threads'], e_computation, label=f'e_computation (n={matrix_size})', marker='o')
+        plt.plot(subset[parallelism_col], e_computation, label=f'e_computation (n={matrix_size})', marker='o')
     
-    plt.xlabel('Threads (p)')
+    plt.xlabel(f'{x_axis_label} (p)')
     plt.ylabel('Serial Fraction (e)')
-    plt.title('Experimentally Determined Serial Fraction (e_computation) vs Threads')
+    plt.title(f'Experimentally Determined Serial Fraction (e_computation) vs {x_axis_label}')
     plt.legend()
     plt.grid(True)
     e_computation_filename = os.path.join(output_dir, f"{base_filename}_e_computation.pdf")
