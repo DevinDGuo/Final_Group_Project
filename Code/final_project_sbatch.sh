@@ -4,18 +4,20 @@
 #SBATCH --mail-user=ddguo@coastal.edu
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --partition=compute
-#SBATCH --nodes=8
-#SBATCH --ntasks-per-node=2
-#SBATCH --cpus-per-task=64
+#SBATCH --nodes=16                # 16 nodes
+#SBATCH --ntasks-per-node=1          # 1 processes per node
+#SBATCH --cpus-per-task=128          # 128 threads per process
 #SBATCH --mem=200G
 #SBATCH --account=ccu108
 #SBATCH --export=ALL
-#SBATCH -t 05:00:00
+#SBATCH -t 06:00:00
 
+# Load required modules
 module load cpu/0.17.3b gcc/10.2.0/npcyll4 openmpi/4.1.1
+module load python3
+
+# Set OpenMP threads
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-mpirun -np 16 --map-by ppr:2:node:PE=64 ./mpi-omp-stencil-2d 12 A.dat B.dat 64 0
-
-module load python3
+# Run the Python script
 python3 ../Python/gather_data_all.py pthread.csv omp.csv mpi.csv mpi-omp.csv
