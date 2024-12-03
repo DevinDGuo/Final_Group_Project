@@ -1,4 +1,4 @@
-mport os
+import os
 import subprocess
 
 # Change to the 'code' directory
@@ -39,6 +39,24 @@ subprocess.run(["./omp-stencil-2d", "10", "initial.dat", "final1.dat", "1", "4"]
 
 # Run 
 subprocess.run(["./print-2d", "final1.dat"])
+
+print("-------------------------------------")
+
+# Run 'mpirun -np 4 ./mpi-stencil-2d 25 initial.dat final2.dat 1'
+print("Running MPI stencil...")
+subprocess.run(["mpirun", "-np", "4", "./mpi-stencil-2d", "25", "initial.dat", "final2.dat", "1"])
+# Run 
+subprocess.run(["./print-2d", "final2.dat"])
+
+print("-------------------------------------")
+
+# Run 'mpirun -np 4 ./mpi-omp-stencil-2d 25 initial.dat final2.dat 4 1'
+print("Running MPI-OMP-Hybrid stencil...")
+subprocess.run(["mpirun", "-np", "4", "./mpi-omp-stencil-2d", "25", "initial.dat", "final3.dat", "4", "1"])
+# Run 
+subprocess.run(["./print-2d", "final3.dat"])
+
+print("-------------------------------------")
 
 # Run 'make clean all' to compile the code
 subprocess.run(["make", "clean"])

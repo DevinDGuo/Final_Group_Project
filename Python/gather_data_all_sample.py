@@ -29,9 +29,9 @@ except subprocess.CalledProcessError as e:
 
 # Matrix sizes (n) and thread/process counts
 MATRIX_SIZES = [50, 100, 150]
-THREAD_COUNTS = [1, 2, 4, 8]        # Regular OpenMP and Pthread tests
-PROCESS_COUNTS = [1, 2, 4, 8]       # MPI processes
-THREAD_COUNTS_HYBRID = [1, 2, 4, 8, 16]  # Hybrid MPI+OpenMP can go up to 16
+THREAD_COUNTS = [1, 2, 4]        # Regular OpenMP and Pthread tests
+PROCESS_COUNTS = [1, 2, 4]       # MPI processes
+THREAD_COUNTS_HYBRID = [1, 2, 4]  # Hybrid MPI+OpenMP can go up to 16
 
 # Number of time steps
 TS = 12
@@ -104,7 +104,7 @@ for n in MATRIX_SIZES:
             print(f"Running MPI driver: {TS} iterations for matrix size {n}x{n} with {p} processes...")
             try:
                 result = subprocess.run(
-                    ["mpirun", "--oversubscribe", "-np", str(p), "--map-by", "node", "--bind-to", "core",
+                    ["mpirun", "--oversubscribe", "-np", str(p), "--map-by", "node",
                      "./mpi-stencil-2d", str(TS), INPUT_FILE, OUTPUT_FILE, "0"],
                     capture_output=True,
                     text=True,
@@ -126,7 +126,7 @@ for n in MATRIX_SIZES:
                 print(f"Running MPI-OMP driver: {TS} iterations for matrix size {n}x{n} with {p} processes and {t} threads...")
                 try:
                     result = subprocess.run(
-                        ["mpirun", "--oversubscribe", "-np", str(p), "--map-by", f"node:PE={t}", "--bind-to", "core",
+                        ["mpirun", "--oversubscribe", "-np", str(p),
                          "./mpi-omp-stencil-2d", str(TS), INPUT_FILE, OUTPUT_FILE, str(t), "0"],
                         capture_output=True,
                         text=True,

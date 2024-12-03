@@ -83,9 +83,9 @@ def plot_serial_fraction(df, output_dir):
             
             plt.grid(True, which="both", ls="-", alpha=0.2)
             plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, 
-                       f'serial_fraction_{metric_type.lower()}_matrix_{matrix_size}.png'), 
-                       dpi=300, bbox_inches='tight')
+            save_path = os.path.join(output_dir, f'serial_fraction_{metric_type.lower()}_matrix_{matrix_size}.png')
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"Saved {save_path}")
             plt.close()
 
 def plot_timing_components(df, output_dir):
@@ -137,9 +137,9 @@ def plot_timing_components(df, output_dir):
             
             plt.grid(True, which="both", ls="-", alpha=0.2)
             plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, 
-                       f'time_{timing_type.lower()}_matrix_{matrix_size}.png'), 
-                       dpi=300, bbox_inches='tight')
+            save_path = os.path.join(output_dir, f'time_{timing_type.lower()}_matrix_{matrix_size}.png')
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"Saved {save_path}")
             plt.close()
 
 def plot_speedup_efficiency(df, output_dir):
@@ -195,6 +195,21 @@ def plot_speedup_efficiency(df, output_dir):
                             label=f'{process_count} Processes',
                             color=colors[idx % len(colors)])
                 
+                # Add ideal lines
+                thread_values = sorted(df['OMP Threads'].unique())
+                if plot_type == 'Speedup':
+                    # Single reference line
+                    ideal_speedup = thread_values  # Linear scaling with number of threads
+                    plt.plot(thread_values, ideal_speedup,
+                            linestyle='--',
+                            color='black',
+                            label='Ideal',
+                            alpha=0.5)
+                elif plot_type == 'Efficiency':
+                    # Add horizontal line at y=1 for perfect efficiency
+                    plt.axhline(y=1, color='black', linestyle='--', 
+                                label='Ideal Efficiency', alpha=0.5)
+                
                 if plot_type == 'Speedup':
                     plt.ylim(0, max_actual_speedup * 1.2)
                 else:  # Efficiency
@@ -212,9 +227,11 @@ def plot_speedup_efficiency(df, output_dir):
                 
                 plt.grid(True, which="both", ls="-", alpha=0.2)
                 plt.tight_layout()
-                plt.savefig(os.path.join(output_dir, 
-                           f'{plot_type.lower()}_matrix_{matrix_size}_{metric_type.lower()}.png'), 
-                           dpi=300, bbox_inches='tight')
+                # Modify the save_path line in plot_speedup_efficiency:
+                save_path = os.path.join(output_dir, 
+                    f'{plot_type.lower()}_matrix{matrix_size}_{metric_type.lower()}.png')
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                print(f"Saved {save_path}")
                 plt.close()
 
 def parse_arguments():
