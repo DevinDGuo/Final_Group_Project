@@ -28,7 +28,7 @@ except subprocess.CalledProcessError as e:
     sys.exit(1)
 
 # Matrix sizes (n) and thread/process counts
-MATRIX_SIZES = [5000, 10000]
+MATRIX_SIZES = [5000, 10000, 20000, 40000]
 THREAD_COUNTS = [1, 2, 4, 8, 16]        # Regular OpenMP and Pthread tests
 PROCESS_COUNTS = [1, 2, 4, 8, 16]       # MPI processes
 THREAD_COUNTS_HYBRID = [1, 2, 4, 8, 16, 32, 64, 128]  # Hybrid MPI+OpenMP can go up to 128

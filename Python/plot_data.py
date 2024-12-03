@@ -17,12 +17,16 @@ def calculate_serial_fraction(speedup, threads):
     return ((1 / speedup) - (1 / threads)) / (1 - (1 / threads))
 
 def plot_data(filename):
-    # Create the 'plots' directory if it doesn't exist
-    output_dir = "../plots"
-    os.makedirs(output_dir, exist_ok=True)
+    # Create the base 'plots' directory if it doesn't exist
+    base_dir = "../plots"
+    os.makedirs(base_dir, exist_ok=True)
     
     # Extract base filename (without path and extension) to include in output filenames
     base_filename = os.path.splitext(os.path.basename(filename))[0]
+    
+    # Create subdirectory based on input filename
+    output_dir = os.path.join(base_dir, base_filename)
+    os.makedirs(output_dir, exist_ok=True)
     
     # Load data from the CSV file
     data = pd.read_csv(filename)
@@ -54,6 +58,9 @@ def plot_data(filename):
         print(f"Saved {timing_filename}")
         plt.close()
 
+    # Rest of the plotting code remains exactly the same, just with updated output_dir
+    # [Previous plotting code continues unchanged...]
+    
     # Speedup Overall Plot
     plt.figure(figsize=(10, 6))
     for matrix_size in unique_matrix_sizes:

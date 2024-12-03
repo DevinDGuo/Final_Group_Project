@@ -2,10 +2,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import argparse
+import sys
+
+# Set global font size
+plt.rcParams.update({'font.size': 14})
 
 def calculate_serial_fraction(speedup, total_processors):
     """Calculate experimental serial fraction using Amdahl's Law"""
     return (1/speedup - 1/total_processors)/(1 - 1/total_processors)
+
+def create_output_directory(input_file):
+    """Create output directory structure based on input filename"""
+    base_dir = "../plots"
+    os.makedirs(base_dir, exist_ok=True)
+    
+    base_filename = os.path.splitext(os.path.basename(input_file))[0]
+    output_dir = os.path.join(base_dir, base_filename)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    return output_dir, base_filename
 
 def plot_serial_fraction(df, output_dir):
     """Create line plots showing the serial fraction for each configuration."""
@@ -55,7 +71,6 @@ def plot_serial_fraction(df, output_dir):
                         label=f'{process_count} Processes',
                         color=colors[idx % len(colors)])
             
-            # Customize the plot
             plt.xscale('log', base=2)
             plt.grid(True, linestyle='--', alpha=0.7)
             plt.xlabel('OMP Threads')
@@ -63,14 +78,10 @@ def plot_serial_fraction(df, output_dir):
             plt.title(f'{metric_type} Serial Fraction vs Threads (Matrix Size: {matrix_size})')
             plt.legend(fontsize=10, frameon=True, facecolor='white', edgecolor='black')
             
-            # Set x-ticks to match the actual thread counts
             thread_counts = sorted(df['OMP Threads'].unique())
             plt.xticks(thread_counts, thread_counts)
             
-            # Add gridlines
             plt.grid(True, which="both", ls="-", alpha=0.2)
-            
-            # Adjust layout and save
             plt.tight_layout()
             plt.savefig(os.path.join(output_dir, 
                        f'serial_fraction_{metric_type.lower()}_matrix_{matrix_size}.png'), 
@@ -206,12 +217,42 @@ def plot_speedup_efficiency(df, output_dir):
                            dpi=300, bbox_inches='tight')
                 plt.close()
 
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Plot data from a single CSV file.",
+        usage=f"python3 {os.path.basename(__file__)} <data.csv>"
+    )
+    parser.add_argument("filename", type=str, nargs="?", help="Path to the CSV file containing data.")
+    return parser
+
 def main():
-    output_dir = '../Plots/mpi-omp-hybrid-plots'
-    os.makedirs(output_dir, exist_ok=True)
+    # Parse command line arguments
+    parser = parse_arguments()
+    args = parser.parse_args()
+    
+    # Check if no argument was provided
+    if not args.filename:
+        parser.print_usage()
+        sys.exit(1)
 
-    df = pd.read_csv('../data/mpi-omp.csv')
+    # Create output directory structure
+    output_dir, base_filename = create_output_directory(args.filename)
 
+    try:
+        # Read the CSV file
+        df = pd.read_csv(args.filename)
+    except FileNotFoundError:
+        print(f"Error: Input file '{args.filename}' not found")
+        sys.exit(1)
+    except pd.errors.EmptyDataError:
+        print(f"Error: Input file '{args.filename}' is empty")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading input file: {str(e)}")
+        sys.exit(1)
+
+    # Generate all plots
     plot_speedup_efficiency(df, output_dir)
     plot_timing_components(df, output_dir)
     plot_serial_fraction(df, output_dir)
