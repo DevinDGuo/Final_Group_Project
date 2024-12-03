@@ -44,6 +44,8 @@ final_project/
 
 ### Compilation Requirements
 - GCC compiler with OpenMP support
+    - *Note: If compiling on MacOS, gcc version 14 must be specified.  
+    If using mpicc, locate the MPI wrapper configuration file and set `compiler=gcc-14`*
 - POSIX threads library
 - MPI implementation (OpenMPI recommended)
 - Make build system
