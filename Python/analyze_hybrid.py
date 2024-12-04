@@ -3,152 +3,110 @@ import numpy as np
 import argparse
 import sys
 import os
-import matplotlib.pyplot as plt
 
-def create_best_config_plots(df, output_dir, plot_type):
-    """Create plots showing just the best performing configuration for each matrix size"""
-    colors = ['#0077BB', '#EE7733', '#009988', '#CC3311']  # One color per matrix size
-    markers = ['o', 's', '^', 'D']
+def analyze_performance(df):
+    """Analyze performance metrics for each matrix size and find best overall configuration"""
     matrix_sizes = sorted(df['Matrix Size'].unique())
+    results = []
     
-    plt.figure(figsize=(12, 8))
-    
-    for idx, matrix_size in enumerate(matrix_sizes):
+    # Analyze each matrix size
+    for matrix_size in matrix_sizes:
+        # Calculate baseline (serial) time
         baseline = df[(df['Matrix Size'] == matrix_size) & 
                      (df['Processes'] == 1) & 
                      (df['OMP Threads'] == 1)]['Time Overall (s)'].iloc[0]
         
+        # Calculate metrics for all configurations
         matrix_data = df[df['Matrix Size'] == matrix_size].copy()
         matrix_data['Speedup'] = baseline / matrix_data['Time Overall (s)']
+        matrix_data['Total Processors'] = matrix_data['Processes'] * matrix_data['OMP Threads']
+        matrix_data['Efficiency'] = matrix_data['Speedup'] / matrix_data['Total Processors']
+        matrix_data['Serial Fraction'] = (1/matrix_data['Speedup'] - 1/matrix_data['Total Processors']) / (1 - 1/matrix_data['Total Processors'])
         
-        # Find best configuration based on speedup
-        best_idx = matrix_data['Speedup'].idxmax()
-        best_config = matrix_data.loc[best_idx]
+        # Find best speedup configuration
+        best_speedup_idx = matrix_data['Speedup'].idxmax()
+        best_config = matrix_data.loc[best_speedup_idx]
         
-        # Get data for the best process count
-        best_process_data = df[(df['Matrix Size'] == matrix_size) & 
-                             (df['Processes'] == best_config['Processes'])]
-        speedups = baseline / best_process_data['Time Overall (s)']
-        
-        if plot_type == 'speedup':
-            y_values = speedups
-            ylabel = 'Speedup'
-            title = 'Best Process Configuration Speedup per Matrix Size'
-        elif plot_type == 'efficiency':
-            total_processors = best_config['Processes'] * best_process_data['OMP Threads']
-            y_values = speedups / total_processors
-            ylabel = 'Efficiency'
-            title = 'Best Process Configuration Efficiency per Matrix Size'
-        else:  # serial fraction
-            total_processors = best_config['Processes'] * best_process_data['OMP Threads']
-            y_values = (1/speedups - 1/total_processors)/(1 - 1/total_processors)
-            ylabel = 'Serial Fraction'
-            title = 'Best Process Configuration Serial Fraction per Matrix Size'
-        
-        plt.plot(best_process_data['OMP Threads'], y_values,
-                marker=markers[idx % len(markers)],
-                linestyle='-',
-                linewidth=2,
-                markersize=8,
-                label=f'Matrix {matrix_size} (P={int(best_config["Processes"])})',
-                color=colors[idx % len(colors)])
+        results.append({
+            'Matrix Size': matrix_size,
+            'Best Config Processes': int(best_config['Processes']),
+            'Best Config Threads': int(best_config['OMP Threads']),
+            'Total Processors': int(best_config['Total Processors']),
+            'Speedup': best_config['Speedup'],
+            'Efficiency': best_config['Efficiency'],
+            'Serial Fraction': best_config['Serial Fraction'],
+            'Time (s)': best_config['Time Overall (s)'],
+            'Baseline Time (s)': baseline
+        })
     
-    plt.xscale('log', base=2)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.xlabel('OMP Threads')
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.legend(fontsize=10, frameon=True, facecolor='white', edgecolor='black')
-    
-    thread_counts = sorted(df['OMP Threads'].unique())
-    plt.xticks(thread_counts, thread_counts)
-    
-    plt.grid(True, which="both", ls="-", alpha=0.2)
-    plt.tight_layout()
-    save_path = os.path.join(output_dir, f"best_configs_{plot_type}.png")
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"Saved {save_path}")
-    plt.close()
-
-def find_best_overall_config(df):
-    """Find the process-thread combination that performs best across all matrix sizes"""
+    # Find best overall configuration
     process_thread_scores = {}
-    
-    # For each process-thread combination, calculate average speedup across matrix sizes
     for process in df['Processes'].unique():
         for thread in df['OMP Threads'].unique():
             speedups = []
-            for matrix_size in df['Matrix Size'].unique():
+            for matrix_size in matrix_sizes:
                 baseline = df[(df['Matrix Size'] == matrix_size) & 
                             (df['Processes'] == 1) & 
                             (df['OMP Threads'] == 1)]['Time Overall (s)'].iloc[0]
-                
                 try:
                     current_time = df[(df['Matrix Size'] == matrix_size) & 
                                     (df['Processes'] == process) & 
                                     (df['OMP Threads'] == thread)]['Time Overall (s)'].iloc[0]
-                    speedup = baseline / current_time
-                    speedups.append(speedup)
+                    speedups.append(baseline / current_time)
                 except IndexError:
                     continue
-                
             if speedups:
-                avg_speedup = np.mean(speedups)
-                process_thread_scores[(process, thread)] = avg_speedup
+                process_thread_scores[(process, thread)] = np.mean(speedups)
     
-    # Find the best performing configuration
     best_config = max(process_thread_scores.items(), key=lambda x: x[1])
-    return best_config[0][0], best_config[0][1], best_config[1]
+    overall_best = {
+        'Processes': int(best_config[0][0]),
+        'Threads': int(best_config[0][1]),
+        'Average Speedup': best_config[1]
+    }
     
-def analyze_speedups(df, output_dir):
-    matrix_sizes = sorted(df['Matrix Size'].unique())
+    return results, overall_best
+
+def print_analysis_results(results, overall_best):
+    """Format and print the analysis results"""
+    print("\nPerformance Analysis Results:")
+    print("=" * 80)
     
-    print("Best Speedups for each Matrix Size:")
-    print("-" * 50)
+    for result in results:
+        print(f"\nMatrix Size: {result['Matrix Size']}")
+        print("-" * 40)
+        print(f"Best Configuration:")
+        print(f"  Processes: {result['Best Config Processes']}")
+        print(f"  Threads: {result['Best Config Threads']}")
+        print(f"  Total Processors: {result['Total Processors']}")
+        print(f"\nPerformance Metrics:")
+        print(f"  Baseline Time: {result['Baseline Time (s)']:.2f} seconds")
+        print(f"  Best Time: {result['Time (s)']:.2f} seconds")
+        print(f"  Speedup: {result['Speedup']:.2f}x")
+        print(f"  Efficiency: {result['Efficiency']:.2f}")
+        print(f"  Serial Fraction: {result['Serial Fraction']:.2f}")
     
-    for matrix_size in matrix_sizes:
-        baseline = df[(df['Matrix Size'] == matrix_size) & 
-                     (df['Processes'] == 1) & 
-                     (df['OMP Threads'] == 1)]['Time Overall (s)'].iloc[0]
-        
-        matrix_data = df[df['Matrix Size'] == matrix_size].copy()
-        matrix_data['Speedup'] = baseline / matrix_data['Time Overall (s)']
-        
-        best_idx = matrix_data['Speedup'].idxmax()
-        best_config = matrix_data.loc[best_idx]
-        
-        print(f"\nMatrix Size: {matrix_size}")
-        print(f"Best Speedup: {best_config['Speedup']:.2f}x")
-        print(f"Configuration: {int(best_config['Processes'])} processes, {int(best_config['OMP Threads'])} threads")
-        print(f"Time: {best_config['Time Overall (s)']:.2f} seconds")
-    
-    # Create all three plots
-    create_best_config_plots(df, output_dir, 'speedup')
-    create_best_config_plots(df, output_dir, 'efficiency')
-    create_best_config_plots(df, output_dir, 'serial_fraction')
-    
-    # Find best overall process-thread combination
-    best_processes, best_threads, avg_speedup = find_best_overall_config(df)
-    
-    print("\n" + "=" * 50)
-    print(f"Best Overall Configuration:")
-    print(f"Processes: {int(best_processes)}")
-    print(f"Threads: {int(best_threads)}")
-    print(f"Average Speedup across all matrix sizes: {avg_speedup:.2f}x")
+    print("\nBest Overall Configuration:")
+    print("=" * 80)
+    print(f"Processes: {overall_best['Processes']}")
+    print(f"Threads: {overall_best['Threads']}")
+    print(f"Average Speedup across all matrix sizes: {overall_best['Average Speedup']:.2f}x")
 
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description="Analyze speedup data from CSV file.",
+        description="Analyze performance data from CSV file.",
         usage=f"python3 {os.path.basename(__file__)} <data.csv>"
     )
     parser.add_argument("filename", type=str, help="Path to the CSV file containing data.")
     return parser
 
 def main():
+    # Parse command line arguments
     parser = parse_arguments()
     args = parser.parse_args()
 
+    # Read and validate input file
     try:
         df = pd.read_csv(args.filename)
     except FileNotFoundError:
@@ -161,10 +119,11 @@ def main():
         print(f"Error reading input file: {str(e)}")
         sys.exit(1)
     
-    output_dir = "../plots/analysis_hybrid"
-    os.makedirs(output_dir, exist_ok=True)
+    # Perform analysis
+    results, overall_best = analyze_performance(df)
     
-    analyze_speedups(df, output_dir)
+    # Print results
+    print_analysis_results(results, overall_best)
 
 if __name__ == "__main__":
     main()
