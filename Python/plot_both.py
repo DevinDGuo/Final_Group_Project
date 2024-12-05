@@ -234,6 +234,80 @@ def plot_speedup_efficiency(df, output_dir):
                 print(f"Saved {save_path}")
                 plt.close()
 
+def create_component_time_plots(df, output_dir):
+    """Create stacked bar plots showing computation and other time components."""
+    # Define base colors for different process counts - each tuple has (computation_color, other_color)
+    process_colors = [
+        ('#0077BB', '#99DDFF'),  # Blue pair
+        ('#EE7733', '#FFCC99'),  # Orange pair
+        ('#009988', '#66CCBB'),  # Teal pair
+        ('#CC3311', '#FF9999'),  # Red pair
+        ('#33BBEE', '#99EEFF'),  # Cyan pair
+    ]
+    
+    matrix_sizes = sorted(df['Matrix Size'].unique())
+    process_counts = sorted(df['Processes'].unique())
+    
+    for matrix_size in matrix_sizes:
+        plt.figure(figsize=(15, 8))
+        
+        # Number of groups and settings for bars
+        n_groups = len(df[df['Matrix Size'] == matrix_size]['OMP Threads'].unique())
+        bar_width = 0.15
+        opacity = 0.8
+        
+        for idx, process_count in enumerate(process_counts):
+            data = df[(df['Matrix Size'] == matrix_size) & 
+                     (df['Processes'] == process_count)].sort_values('OMP Threads')  # Added sorting
+            
+            thread_positions = np.arange(len(data))
+            offset = idx * bar_width - (len(process_counts) * bar_width / 2)
+            
+            # Get color pair for this process count
+            comp_color, other_color = process_colors[idx % len(process_colors)]
+            
+            # Plot computation time
+            plt.bar(thread_positions + offset,
+                   data['Time Computation (s)'],
+                   bar_width,
+                   alpha=opacity,
+                   color=comp_color,
+                   label=f'{process_count} Proc - Computation')
+            
+            # Plot other time stacked on top
+            plt.bar(thread_positions + offset,
+                   data['Time Other (s)'],
+                   bar_width,
+                   bottom=data['Time Computation (s)'],
+                   alpha=opacity,
+                   color=other_color,
+                   label=f'{process_count} Proc - Other')
+        
+        plt.xlabel('OMP Threads')
+        plt.ylabel('Time (seconds)')
+        plt.title(f'Time Components Analysis - Matrix Size {matrix_size}')
+        
+        # Set x-axis ticks
+        thread_counts = sorted(df['OMP Threads'].unique())
+        plt.xticks(range(len(thread_counts)), thread_counts)
+        
+        # Customize legend
+        plt.legend(bbox_to_anchor=(1.05, 1), 
+                  loc='upper left',
+                  fontsize=10,
+                  frameon=True,
+                  facecolor='white',
+                  edgecolor='black')
+        
+        plt.grid(True, linestyle='--', alpha=0.3)
+        plt.tight_layout()
+        
+        # Save the plot
+        save_path = os.path.join(output_dir, f'time_components_matrix_{matrix_size}.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved {save_path}")
+        plt.close()
+
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -273,6 +347,7 @@ def main():
     plot_speedup_efficiency(df, output_dir)
     plot_timing_components(df, output_dir)
     plot_serial_fraction(df, output_dir)
+    create_component_time_plots(df, output_dir)
     print(f"All plots have been generated in {output_dir}!")
 
 if __name__ == "__main__":
