@@ -90,36 +90,47 @@ int main(int argc, char* argv[]) {
 
     #pragma omp parallel
     {
+        // Each iteration of the stencil computation
         for (int i = 0; i < iterations; i++) {
-            // Apply stencil operation
+            // Apply stencil operation - all threads participate in computation
             stencil2D_MPI_OMP(matrix, matrix1, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
             
+            // Ensure all threads have finished stencil computation
+            #pragma omp barrier
+            
+            // Only master thread handles matrix swapping and MPI communication
             #pragma omp master
             {
-                // File I/O operations (if needed)
+                // Handle optional file I/O for all iterations if requested
                 if (allIterationsFile) {
                     GET_TIME(other_start);
                     if (i == 0) {
-                        write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                        write_row_striped_matrix_halo(allIterationsFile, (void**)matrix, 
+                            MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
                     } else {
-                        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                        append_row_striped_matrix_halo(allIterationsFile, (void**)matrix, 
+                            MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
                     }
                     GET_TIME(other_end);
                     other_total += other_end - other_start;
                 }
 
-                // Debug printing (if needed)
+                // Debug output if requested
                 if (debug_level == 2) {
-                    print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                    print_row_striped_matrix_halo((void**)matrix, MPI_DOUBLE, 
+                        rows, cols, MPI_COMM_WORLD);
                 }
 
-                // Pointer swap and halo exchange are part of computation
+                // Swap matrices for next iteration
                 double **temp = matrix1;
                 matrix1 = matrix;
                 matrix = temp;
                 
-                exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, rows, cols, MPI_COMM_WORLD);
+                // Exchange halo regions between MPI processes
+                exchange_row_striped_values((void***)&matrix, MPI_DOUBLE, 
+                    rows, cols, MPI_COMM_WORLD);
             }
+            // Ensure all threads see the updated matrix pointers and halo regions
             #pragma omp barrier
         }
     }

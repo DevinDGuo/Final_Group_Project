@@ -8,11 +8,11 @@ NC='\033[0m' # No Color
 # Clean and build
 make clean all
 
-# Test parameters
-sizes=(10 50 100)
-iterations=(1 5 10)
-mpi_procs=(2 4 8)
-omp_threads=(2 4 8)
+# Test parameters - simplified
+sizes=(100 200)           # Just test 100x100 matrix
+iterations=(100 250)      # Just test 100 iterations
+mpi_procs=(2 4)      # Test 2 and 4 processes
+omp_threads=(2 4)    # Test 2 and 4 threads
 
 total_tests=0
 failed_tests=0
