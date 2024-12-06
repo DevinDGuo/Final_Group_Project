@@ -47,6 +47,6 @@ for matrix in matrices:
     ims.append([im])
 
 ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True)
-ani.save(output_movie, writer='ffmpeg')
+ani.save(output_movie, writer='ffmpeg', fps=60)
 
 print("Movie created at, " + output_movie + ".")
